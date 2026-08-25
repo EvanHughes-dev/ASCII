@@ -1,7 +1,6 @@
 from PIL import Image
 import os
-from sys import argv
-
+import argparse
 CHAR_SUBSTITUTE= [' ', '.', ':', '-', '=', '+', '*', '#', '%', '@']
 MODE_COLOR = True
 
@@ -9,16 +8,13 @@ def calculate_intensity(r, g, b):
     return int(r + g + b)//3
 
 def parse_image(file_path: str, chars_wide: int, char_aspect_ratio: float = 0.5):
-    """
-    char_aspect_ratio: width-to-height ratio of a single terminal character cell.
-    Most monospace terminal fonts are roughly twice as tall as they are wide,
-    so 0.5 is a reasonable default. Set to 1.0 if your terminal/font is square,
-    or tweak until circles look like circles.
-    """
-    im = Image.open(file_path).convert("RGB")
-    width, height = im.size
-    pixels = im.load()
+    """Parse an image from raw pixels to gray values"""
+    # Get the image
+    image = Image.open(file_path).convert("RGB")
+    width, height = image.size
+    pixels = image.load()
 
+    # Define how many pixels wide it should be
     pixels_per_square_x = width / chars_wide
 
     # Derive chars_high from the image aspect ratio, corrected for character shape
@@ -27,10 +23,16 @@ def parse_image(file_path: str, chars_wide: int, char_aspect_ratio: float = 0.5)
 
     pixels_per_square_y = height / chars_high
 
-    ascii_image_data = [[0] * chars_high for _ in range(chars_wide)]
-
+    # Create a jagged array for each row, create the needed columns
+    ascii_image_data = [[0] * chars_wide for _ in range(chars_high)]
+    
+    # For each character we need
+    
     for col in range(chars_wide):
+
+        # Find start and end indexes
         x_start = int(col * pixels_per_square_x)
+        # Clamp to total width of image
         x_end = min(int((col + 1) * pixels_per_square_x), width)
         x_end = max(x_end, x_start + 1)
 
@@ -49,17 +51,18 @@ def parse_image(file_path: str, chars_wide: int, char_aspect_ratio: float = 0.5)
                     grayscale_count += 1
 
             average = total_grayscale // grayscale_count
-            ascii_image_data[col][row] = average
+            ascii_image_data[row][col] = average
 
     return ascii_image_data, chars_wide, chars_high
 
 
 def print_ascii_image(ascii_image_data, chars_wide, chars_high):
     RESET = "\033[0m"
-    for y in range(chars_high):
+    for row in range(chars_high):
+        row_data = ascii_image_data[row]
         row = []
-        for x in range(chars_wide):
-            grey = ascii_image_data[x][y]
+        for col in range(chars_wide):
+            grey = row_data[col]
 
             if MODE_COLOR:
                 row.append(f"\033[38;2;{grey};{grey};{grey}m#{RESET}")
@@ -71,13 +74,23 @@ def print_ascii_image(ascii_image_data, chars_wide, chars_high):
 
 
 if __name__ == "__main__":
+    # Get the width of the terminal in characters (terminals are mono spaced)
     CHARS_WIDE = os.get_terminal_size().columns
-    if len(argv)>1 and (argv[1] == "ASCII" or argv[1]=="-a"):
-        MODE_COLOR = False
-        
-    data, w, h = parse_image("./TestPhoto.jpg", CHARS_WIDE)
-    print(f"Grid size: {w}x{h}")
-    print_ascii_image(data, w, h)
+
+    parser = argparse.ArgumentParser(
+        prog="Image to ASCII Converter",
+        description="Take a image or images and convert it to an ASCII interpretation",
+    )
+    
+    parser.add_argument('-d', '--display', help="display the ASCII image created", action="store_true")
+
+    # This kills the program if -h or --help is found (duh)
+    args = parser.parse_args()
+
+    data, w, h = parse_image("./test.jpg", CHARS_WIDE)
+
+    if args.display:
+        print_ascii_image(data, w, h)
 
 
 
