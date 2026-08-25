@@ -56,7 +56,7 @@ def parse_image(file_path: str, chars_wide: int, char_aspect_ratio: float = 0.5)
     return ascii_image_data, chars_wide, chars_high
 
 
-def print_ascii_image(ascii_image_data, chars_wide, chars_high):
+def print_ascii_image(ascii_image_data, chars_wide, chars_high, use_color = False):
     RESET = "\033[0m"
     for row in range(chars_high):
         row_data = ascii_image_data[row]
@@ -64,7 +64,7 @@ def print_ascii_image(ascii_image_data, chars_wide, chars_high):
         for col in range(chars_wide):
             grey = row_data[col]
 
-            if MODE_COLOR:
+            if use_color:
                 row.append(f"\033[38;2;{grey};{grey};{grey}m#{RESET}")
             else:
                 reduced = int((grey / 256) // 0.1)
@@ -83,6 +83,7 @@ if __name__ == "__main__":
     )
     
     parser.add_argument('-d', '--display', help="display the ASCII image created", action="store_true")
+    parser.add_argument('-c', '--color', help="display the ASCII image created using color, not ascii text", action="store_true")
 
     # This kills the program if -h or --help is found (duh)
     args = parser.parse_args()
@@ -90,7 +91,7 @@ if __name__ == "__main__":
     data, w, h = parse_image("./test.jpg", CHARS_WIDE)
 
     if args.display:
-        print_ascii_image(data, w, h)
+        print_ascii_image(data, w, h, args.color)
 
 
 
